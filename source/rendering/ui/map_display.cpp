@@ -115,7 +115,8 @@ MapCanvas::MapCanvas(wxWindow* parent, Editor& editor, int* attriblist) :
 	last_click_y(-1),
 	last_mmb_click_x(-1),
 	last_mmb_click_y(-1),
-	m_last_gc_time(0) {
+	m_last_gc_time(0),
+	m_last_hover_ui_update_time(0) {
 	// Context creation must happen on the main/UI thread
 	m_glContext = std::make_unique<wxGLContext>(this, g_gui.GetGLContext(this));
 	if (!m_glContext->IsOK()) {
@@ -416,10 +417,15 @@ void MapCanvas::OnMouseMove(wxMouseEvent& event) {
 	}
 
 	if (map_update) {
-		g_gui.UpdateAutoborderPreview(Position(mouse_map_x, mouse_map_y, floor));
-		UpdatePositionStatus(cursor_x, cursor_y);
-		UpdateZoomStatus();
-		Refresh();
+		const long now_ms = wxGetLocalTimeMillis().ToLong();
+		const bool force_update = dragging || boundbox_selection;
+		if (force_update || now_ms - m_last_hover_ui_update_time >= 16) {
+			g_gui.UpdateAutoborderPreview(Position(mouse_map_x, mouse_map_y, floor));
+			UpdatePositionStatus(cursor_x, cursor_y);
+			UpdateZoomStatus();
+			Refresh();
+			m_last_hover_ui_update_time = now_ms;
+		}
 	}
 
 	if (g_gui.IsSelectionMode()) {

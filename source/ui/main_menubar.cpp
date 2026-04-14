@@ -443,6 +443,10 @@ void MainMenuBar::OnMapEditMonsters(wxCommandEvent& WXUNUSED(event)) {
 	;
 }
 
+void MainMenuBar::OnMapAuditAndFix(wxCommandEvent& event) {
+	mapActionsHandler->OnMapAuditAndFix(event);
+}
+
 void MainMenuBar::OnMapStatistics(wxCommandEvent& WXUNUSED(event)) {
 	MapStatisticsDialog::Show(frame);
 }
