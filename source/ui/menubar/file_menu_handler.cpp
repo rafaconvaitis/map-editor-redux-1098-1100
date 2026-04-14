@@ -16,6 +16,7 @@
 #include "app/managers/version_manager.h"
 #include "ui/controls/sortable_list_box.h"
 #include <wx/dirdlg.h>
+#include <wx/filename.h>
 
 FileMenuHandler::FileMenuHandler(MainFrame* frame, MainMenuBar* menubar) :
 	frame(frame), menubar(menubar) {
@@ -95,7 +96,8 @@ void FileMenuHandler::OnImportMinimap(wxCommandEvent& WXUNUSED(event)) {
 		return;
 	}
 
-	export_directory = dialog.GetPath();
+	const wxFileName export_dir_info = wxFileName::DirName(dialog.GetPath());
+	export_directory = export_dir_info.GetFullPath();
 	g_settings.setString(Config::MINIMAP_EXPORT_DIR, nstr(export_directory));
 
 	const bool previous_show_as_minimap = g_settings.getBoolean(Config::SHOW_AS_MINIMAP);
@@ -108,7 +110,7 @@ void FileMenuHandler::OnImportMinimap(wxCommandEvent& WXUNUSED(event)) {
 	g_gui.UpdateMenubar();
 	g_gui.RefreshView();
 
-	g_gui.GetCurrentMapTab()->GetView()->GetCanvas()->TakeScreenshot(export_directory, "png");
+	g_gui.GetCurrentMapTab()->GetView()->GetCanvas()->TakeScreenshot(export_dir_info, "png", false);
 
 	// Restore normal viewport flags after scheduling capture.
 	frame->CallAfter([previous_show_as_minimap, previous_show_only_colors, previous_show_extra]() {

@@ -30,13 +30,15 @@ public:
 	ScreenshotController(MapCanvas* canvas);
 	~ScreenshotController();
 
-	void TakeScreenshot(const wxFileName& path, const wxString& format);
+	void TakeScreenshot(const wxFileName& path, const wxString& format, bool use_ingame_capture = true);
 	bool IsCapturing() const;
+	bool ShouldUseIngameCapture() const;
 	uint8_t* GetBuffer();
 
 private:
 	MapCanvas* canvas;
 	std::unique_ptr<ScreenshotSaver> screenshot_saver;
+	bool prefer_ingame_capture = true;
 };
 
 #endif

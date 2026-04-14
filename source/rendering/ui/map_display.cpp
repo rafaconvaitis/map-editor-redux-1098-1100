@@ -276,7 +276,11 @@ void MapCanvas::OnPaint(wxPaintEvent& event) {
 
 		DrawingOptions& options = drawer->getOptions();
 		if (screenshot_controller->IsCapturing()) {
-			options.SetIngame();
+			if (screenshot_controller->ShouldUseIngameCapture()) {
+				options.SetIngame();
+			} else {
+				options.Update();
+			}
 		} else {
 			options.Update();
 		}
@@ -323,8 +327,8 @@ void MapCanvas::OnPaint(wxPaintEvent& event) {
 	}
 }
 
-void MapCanvas::TakeScreenshot(wxFileName path, wxString format) {
-	screenshot_controller->TakeScreenshot(path, format);
+void MapCanvas::TakeScreenshot(wxFileName path, wxString format, bool use_ingame_capture) {
+	screenshot_controller->TakeScreenshot(path, format, use_ingame_capture);
 }
 
 void MapCanvas::ScreenToMap(int screen_x, int screen_y, int* map_x, int* map_y) {

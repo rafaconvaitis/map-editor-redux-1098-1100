@@ -108,7 +108,7 @@ public:
 
 	Position GetCursorPosition() const;
 
-	void TakeScreenshot(wxFileName path, wxString format);
+	void TakeScreenshot(wxFileName path, wxString format, bool use_ingame_capture = true);
 
 	enum {
 		BLOCK_SIZE = 100

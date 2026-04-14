@@ -34,15 +34,20 @@ bool ScreenshotController::IsCapturing() const {
 	return screenshot_saver->IsCapturing();
 }
 
+bool ScreenshotController::ShouldUseIngameCapture() const {
+	return prefer_ingame_capture;
+}
+
 uint8_t* ScreenshotController::GetBuffer() {
 	return screenshot_saver->GetBuffer();
 }
 
-void ScreenshotController::TakeScreenshot(const wxFileName& path, const wxString& format) {
+void ScreenshotController::TakeScreenshot(const wxFileName& path, const wxString& format, bool use_ingame_capture) {
 	int view_scroll_x, view_scroll_y;
 	int screensize_x, screensize_y;
 	canvas->GetViewBox(&view_scroll_x, &view_scroll_y, &screensize_x, &screensize_y);
 
+	prefer_ingame_capture = use_ingame_capture;
 	screenshot_saver->PrepareCapture(screensize_x, screensize_y);
 
 	// Draw the window
@@ -67,4 +72,5 @@ void ScreenshotController::TakeScreenshot(const wxFileName& path, const wxString
 	canvas->Refresh();
 
 	screenshot_saver->Cleanup();
+	prefer_ingame_capture = true;
 }
