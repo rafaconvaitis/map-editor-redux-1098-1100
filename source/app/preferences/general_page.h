@@ -24,6 +24,7 @@ private:
 
 	wxSpinCtrl* undo_size_spin = nullptr;
 	wxSpinCtrl* undo_mem_size_spin = nullptr;
+	wxSpinCtrl* backup_retention_spin = nullptr;
 	wxSpinCtrl* worker_threads_spin = nullptr;
 	wxSpinCtrl* replace_size_spin = nullptr;
 

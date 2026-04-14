@@ -489,6 +489,9 @@ std::vector<Brush*> ToolOptionsSurface::GetDefaultTools() const {
 	if (g_brush_manager.quest_door_brush) {
 		brushes.push_back(g_brush_manager.quest_door_brush);
 	}
+	if (g_brush_manager.normal_door_alt_brush) {
+		brushes.push_back(g_brush_manager.normal_door_alt_brush);
+	}
 	if (g_brush_manager.hatch_door_brush) {
 		brushes.push_back(g_brush_manager.hatch_door_brush);
 	}
@@ -563,7 +566,7 @@ void ToolOptionsSurface::OnToolButton(wxCommandEvent& event) {
 			case ToolButtonAction::SelectBrush:
 				if (entry.brush) {
 					active_brush = entry.brush;
-					g_gui.SelectBrush(entry.brush);
+					g_gui.SelectBrush(entry.brush, TILESET_TERRAIN);
 					g_gui.SetStatusText(std::format("Selected Tool: {}", entry.brush->getName()));
 				}
 				break;

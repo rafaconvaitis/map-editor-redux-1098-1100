@@ -219,7 +219,7 @@ void MenuBarActionManager::UpdateState(MainMenuBar* mb) {
 
 	mb->EnableItem(IMPORT_MAP, is_local);
 	mb->EnableItem(IMPORT_MONSTERS, is_local);
-	mb->EnableItem(IMPORT_MINIMAP, false);
+	mb->EnableItem(IMPORT_MINIMAP, is_local);
 
 	mb->EnableItem(EXPORT_TILESETS, loaded);
 

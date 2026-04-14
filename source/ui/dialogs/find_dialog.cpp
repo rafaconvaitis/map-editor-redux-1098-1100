@@ -1,6 +1,7 @@
 #include "ui/dialogs/find_dialog.h"
 
 #include "brushes/brush.h"
+#include "app/settings.h"
 #include "item_definitions/core/item_definition_store.h"
 #include "ui/gui.h"
 #include "ui/theme.h"
@@ -9,6 +10,7 @@
 #include <glad/glad.h>
 #include <nanovg.h>
 #include <algorithm>
+#include <sstream>
 
 static bool caseInsensitiveContains(std::string_view haystack, std::string_view needle_lower) {
 	auto it = std::search(
@@ -241,11 +243,33 @@ void FindBrushDialog::RefreshContentsInternal() {
 
 	std::string search_string = as_lower_str(nstr(search_field->GetValue()));
 	bool do_search = (search_string.size() >= 2);
+	bool found_search_results = false;
+
+	const auto addBrushByName = [&](const std::string& brush_name) {
+		const BrushMap& brushes_map = g_brushes.getMap();
+		for (const auto& [name, brush_ptr] : brushes_map) {
+			Brush* brush = brush_ptr.get();
+			if (!brush || brush->is<RAWBrush>()) {
+				continue;
+			}
+			if (brush->getName() == brush_name) {
+				item_list->AddBrush(brush);
+				return true;
+			}
+		}
+
+		for (ServerItemId id : g_item_definitions.allIds()) {
+			RAWBrush* raw_brush = g_item_definitions.editorData(id).raw_brush;
+			if (raw_brush && raw_brush->getName() == brush_name) {
+				item_list->AddBrush(raw_brush);
+				return true;
+			}
+		}
+
+		return false;
+	};
 
 	if (do_search) {
-
-		bool found_search_results = false;
-
 		const BrushMap& brushes_map = g_brushes.getMap();
 
 		for (const auto& [name, brush_ptr] : brushes_map) {
@@ -276,12 +300,22 @@ void FindBrushDialog::RefreshContentsInternal() {
 			found_search_results = true;
 			item_list->AddBrush(raw_brush);
 		}
-
-		if (found_search_results) {
-			item_list->SetSelection(0);
-		} else {
-			item_list->SetNoMatches();
+	} else {
+		std::istringstream recent_stream(g_settings.getString(Config::RECENT_BRUSHES));
+		for (std::string line; std::getline(recent_stream, line);) {
+			if (line.empty()) {
+				continue;
+			}
+			if (addBrushByName(line)) {
+				found_search_results = true;
+			}
 		}
+	}
+
+	if (found_search_results) {
+		item_list->SetSelection(0);
+	} else if (do_search) {
+		item_list->SetNoMatches();
 	}
 	item_list->CommitUpdates();
 }

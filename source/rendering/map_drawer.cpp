@@ -404,6 +404,20 @@ void MapDrawer::DrawMap() {
 			DrawMapLayer(hidden_floor_light_batch, map_z, live_client, true);
 		}
 
+		if (options.experimental_fog && !options.isDrawLight() && map_z < view.end_z) {
+			const float depth = static_cast<float>(view.end_z - map_z);
+			const float alpha = std::clamp(depth * 0.045f, 0.0f, 0.30f);
+			if (alpha > 0.0f && g_gui.gfx.ensureAtlasManager()) {
+				sprite_batch->drawRect(
+					0.0f,
+					0.0f,
+					view.screensize_x * view.zoom,
+					view.screensize_y * view.zoom,
+					glm::vec4(0.14f, 0.17f, 0.20f, alpha),
+					*g_gui.gfx.getAtlasManager());
+			}
+		}
+
 		preview_drawer->draw(*sprite_batch, canvas, view, map_z, options, editor, item_drawer.get(), sprite_drawer.get(), creature_drawer.get(), options.current_house_id);
 
 		--view.start_x;

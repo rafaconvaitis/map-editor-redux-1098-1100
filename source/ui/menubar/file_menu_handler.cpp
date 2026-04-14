@@ -10,10 +10,12 @@
 #include "ui/about_window.h"
 #include "ui/dat_debug_view.h"
 #include "app/preferences.h"
+#include "app/settings.h"
 #include "ui/extension_window.h"
 #include "game/creatures.h"
 #include "app/managers/version_manager.h"
 #include "ui/controls/sortable_list_box.h"
+#include <wx/dirdlg.h>
 
 FileMenuHandler::FileMenuHandler(MainFrame* frame, MainMenuBar* menubar) :
 	frame(frame), menubar(menubar) {
@@ -76,6 +78,46 @@ void FileMenuHandler::OnImportMonsterData(wxCommandEvent& WXUNUSED(event)) {
 
 void FileMenuHandler::OnImportMinimap(wxCommandEvent& WXUNUSED(event)) {
 	ASSERT(g_gui.IsEditorOpen());
+	if (!g_gui.GetCurrentMapTab()) {
+		return;
+	}
+
+	wxString export_directory = wxstr(g_settings.getString(Config::MINIMAP_EXPORT_DIR));
+	if (export_directory.empty()) {
+		export_directory = wxstr(g_settings.getString(Config::SCREENSHOT_DIRECTORY));
+	}
+	if (export_directory.empty()) {
+		export_directory = wxGetCwd();
+	}
+
+	wxDirDialog dialog(g_gui.root, "Select export directory for minimap screenshot", export_directory, wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+	if (dialog.ShowModal() != wxID_OK) {
+		return;
+	}
+
+	export_directory = dialog.GetPath();
+	g_settings.setString(Config::MINIMAP_EXPORT_DIR, nstr(export_directory));
+
+	const bool previous_show_as_minimap = g_settings.getBoolean(Config::SHOW_AS_MINIMAP);
+	const bool previous_show_only_colors = g_settings.getBoolean(Config::SHOW_ONLY_TILEFLAGS);
+	const bool previous_show_extra = g_settings.getBoolean(Config::SHOW_EXTRA);
+
+	g_settings.setInteger(Config::SHOW_AS_MINIMAP, true);
+	g_settings.setInteger(Config::SHOW_ONLY_TILEFLAGS, true);
+	g_settings.setInteger(Config::SHOW_EXTRA, false);
+	g_gui.UpdateMenubar();
+	g_gui.RefreshView();
+
+	g_gui.GetCurrentMapTab()->GetView()->GetCanvas()->TakeScreenshot(export_directory, "png");
+
+	// Restore normal viewport flags after scheduling capture.
+	frame->CallAfter([previous_show_as_minimap, previous_show_only_colors, previous_show_extra]() {
+		g_settings.setInteger(Config::SHOW_AS_MINIMAP, previous_show_as_minimap);
+		g_settings.setInteger(Config::SHOW_ONLY_TILEFLAGS, previous_show_only_colors);
+		g_settings.setInteger(Config::SHOW_EXTRA, previous_show_extra);
+		g_gui.UpdateMenubar();
+		g_gui.RefreshView();
+	});
 }
 
 void FileMenuHandler::OnExportTilesets(wxCommandEvent& WXUNUSED(event)) {

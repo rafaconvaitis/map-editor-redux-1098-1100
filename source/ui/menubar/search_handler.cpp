@@ -146,15 +146,22 @@ SearchHandler::SearchHandler(MainFrame* frame) :
 }
 
 void SearchHandler::OnSearchForItem(wxCommandEvent& WXUNUSED(event)) {
-	if (!g_gui.IsEditorOpen()) {
-		return;
-	}
-
-	FindItemDialog dialog(frame, "Search for Item", false, FindItemDialog::ActionSet::SearchAndSelect, AdvancedFinderDefaultAction::SearchMap, true);
+	const bool can_search_map = g_gui.IsEditorOpen();
+	FindItemDialog dialog(
+		frame,
+		"Search for Item, Creature, or Brush",
+		false,
+		FindItemDialog::ActionSet::SearchAndSelect,
+		can_search_map ? AdvancedFinderDefaultAction::SearchMap : AdvancedFinderDefaultAction::SelectItem,
+		true);
 	const int modal_result = dialog.ShowModal();
 	if (modal_result != wxID_CANCEL) {
-		Map* current_map = &g_gui.GetCurrentMap();
 		if (dialog.getResultAction() == FindItemDialog::ResultAction::SearchMap) {
+			if (!can_search_map) {
+				DialogUtil::PopupDialog("Search unavailable", "Open a map first to run map-wide search.", wxOK | wxICON_INFORMATION);
+				return;
+			}
+			Map* current_map = &g_gui.GetCurrentMap();
 			if (dialog.getResultKind() == AdvancedFinderCatalogKind::Creature) {
 				showCreatureSearchResults(current_map, dialog.getResult(), "Searching map...");
 			} else {

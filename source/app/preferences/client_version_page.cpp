@@ -14,7 +14,9 @@
 #include <wx/weakref.h>
 
 #include "app/main.h"
+#include "app/managers/version_manager.h"
 #include "app/settings.h"
+#include "ui/dialog_util.h"
 #include "ui/theme.h"
 #include "util/image_manager.h"
 
@@ -1116,6 +1118,24 @@ void ClientVersionPage::Apply() {
 		}
 		RefreshClientEditor();
 		RefreshSummary();
+
+		ClientVersionID reload_target = g_version.GetCurrentVersionID();
+		if (reload_target.empty() || ClientVersion::get(reload_target) == nullptr) {
+			if (ClientVersion* latest = ClientVersion::getLatestVersion()) {
+				reload_target = latest->getID();
+			}
+		}
+
+		if (!reload_target.empty()) {
+			wxString reload_error;
+			std::vector<std::string> reload_warnings;
+			if (!g_version.LoadVersion(reload_target, reload_error, reload_warnings, true)) {
+				DialogUtil::PopupDialog("Client Reload Error", reload_error, wxOK | wxICON_ERROR);
+			}
+			if (!reload_warnings.empty()) {
+				DialogUtil::ListDialog("Client Reload Warnings", reload_warnings);
+			}
+		}
 	} else {
 		for (auto& client : deleted_backups) {
 			ClientVersion::addVersion(std::move(client));
