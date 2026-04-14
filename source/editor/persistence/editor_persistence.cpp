@@ -244,6 +244,11 @@ void EditorPersistence::saveMap(Editor& editor, FileName filename, bool showdial
 					continue;
 				}
 
+				const size_t min_timestamped_length = prefix.size() + extension.size() + 1;
+				if (filename.size() < min_timestamped_length) {
+					continue; // ignore live file (base.ext) and malformed names
+				}
+
 				const size_t timestamp_length = filename.size() - prefix.size() - extension.size();
 				if (timestamp_length == 0) {
 					continue; // current live file (base.ext)
