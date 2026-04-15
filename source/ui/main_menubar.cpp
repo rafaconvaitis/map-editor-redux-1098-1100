@@ -443,6 +443,10 @@ void MainMenuBar::OnMapEditMonsters(wxCommandEvent& WXUNUSED(event)) {
 	;
 }
 
+void MainMenuBar::OnMapMoonshotStudio(wxCommandEvent& event) {
+	mapActionsHandler->OnMapMoonshotStudio(event);
+}
+
 void MainMenuBar::OnMapAuditAndFix(wxCommandEvent& event) {
 	mapActionsHandler->OnMapAuditAndFix(event);
 }

@@ -111,6 +111,7 @@
 		<item name="Edit Monsters" action="EDIT_MONSTERS" help="Edit monsters."/>
 		-->
 		<separator/>
+		<item name="Moonshot Studio..." action="MAP_MOONSHOT_STUDIO" help="Prompt-driven deterministic world generation with validation and semantic diff report."/>
 		<item name="Audit + Quick Fix..." action="MAP_AUDIT_AND_FIX" help="Audits map consistency and offers automatic fixes for common issues."/>
 		<item name="Cleanup invalid tiles..." action="MAP_CLEANUP" help="Removes all invalid or unresolved items from the map."/>
 		<item name="Cleanup invalid zones..." action="MAP_CLEAN_INVALID_ZONES" help="Removes preserved invalid tile flags and opaque OTBM tile fragments from the map."/>

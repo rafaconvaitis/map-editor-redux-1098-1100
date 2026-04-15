@@ -6,11 +6,18 @@
 #include "editor/operations/clean_operations.h"
 #include "editor/operations/search_operations.h"
 #include "map/map.h"
+#include "map/map_health_score.h"
 #include "editor/action_queue.h"
+#include "worldgen/prompt_layout_engine.h"
+#include "worldgen/moonshot_service.h"
 #include <format>
 #include <vector>
+#include <wx/textdlg.h>
+#include <wx/datetime.h>
 
 namespace {
+MoonshotWorldgenService g_moonshot_worldgen_service;
+
 struct MapAuditReport {
 	uint64_t total_tiles = 0;
 	uint64_t invalid_zone_tiles = 0;
@@ -123,6 +130,54 @@ void cleanupDanglingWaypoints(Map& map) {
 	for (const std::string& name : waypoint_names_to_remove) {
 		map.waypoints.removeWaypoint(name);
 	}
+}
+
+std::vector<std::string> buildMoonshotReportLines(const WorldgenExecutionReport& report) {
+	std::vector<std::string> lines;
+	lines.push_back(std::format("Preset: {}", report.request.preset.display_name));
+	lines.push_back(std::format(
+		"Variation: {} ({}/{})",
+		report.variation_signature.empty() ? report.request.variation_signature : report.variation_signature,
+		report.variation_index,
+		report.variation_space
+	));
+	lines.push_back(std::format(
+		"Region: ({}, {}, {}) -> ({}, {}, {})",
+		report.request.region.x1,
+		report.request.region.y1,
+		report.request.region.z,
+		report.request.region.x2,
+		report.request.region.y2,
+		report.request.region.z
+	));
+	lines.push_back(std::format("Prompt: {}", report.request.prompt));
+	lines.emplace_back("");
+	lines.emplace_back("Validation");
+	for (const auto& line : report.validation.messages) {
+		lines.push_back(std::format(" - {}", line));
+	}
+	lines.emplace_back("");
+	lines.emplace_back("Semantic Diff");
+	for (const auto& line : report.semantic_diff.messages) {
+		lines.push_back(std::format(" - {}", line));
+	}
+	lines.emplace_back("");
+	lines.emplace_back("Performance");
+	for (const auto& sample : report.performance) {
+		lines.push_back(std::format(" - {}: {:.2f} ms", sample.stage, sample.milliseconds));
+	}
+	lines.emplace_back("");
+	lines.emplace_back("Timeline (last runs)");
+	for (const auto& entry : report.timeline_tail) {
+		lines.push_back(std::format(
+			" - [{}] {} | {} | tiles={}",
+			entry.timestamp,
+			entry.preset_name,
+			entry.prompt,
+			entry.snapshot.tile_count
+		));
+	}
+	return lines;
 }
 }
 
@@ -348,6 +403,8 @@ void MapActionsHandler::OnMapAuditAndFix(wxCommandEvent& WXUNUSED(event)) {
 	}
 
 	Map& map = g_gui.GetCurrentMap();
+	editor->beginSessionOperation("Map Audit Quick Fix");
+	const size_t checkpoint = editor->createCheckpoint("Before Map Audit");
 	const MapAuditReport before = auditMap(map);
 	DialogUtil::ListDialog("Map Audit Report", buildAuditSummary(before));
 
@@ -358,6 +415,7 @@ void MapActionsHandler::OnMapAuditAndFix(wxCommandEvent& WXUNUSED(event)) {
 	);
 
 	if (apply_fixes != wxID_YES) {
+		editor->endSessionOperation();
 		return;
 	}
 
@@ -368,6 +426,7 @@ void MapActionsHandler::OnMapAuditAndFix(wxCommandEvent& WXUNUSED(event)) {
 	reconcileSpawnMetadata(map);
 	cleanupDanglingWaypoints(map);
 	g_gui.DestroyLoadBar();
+	editor->endSessionOperation();
 
 	map.doChange();
 	g_gui.RefreshView();
@@ -382,6 +441,101 @@ void MapActionsHandler::OnMapAuditAndFix(wxCommandEvent& WXUNUSED(event)) {
 		std::format("Missing spawn references: {} -> {}", before.missing_spawn_refs, after.missing_spawn_refs),
 		std::format("Waypoints pointing to missing tiles: {} -> {}", before.orphan_waypoints, after.orphan_waypoints)
 	};
+	const MapHealthScoreReport health = MapHealthScorer::evaluate(map);
+	result.emplace_back("");
+	result.emplace_back("Map health:");
+	for (const std::string& line : health.lines) {
+		result.push_back(std::format("  {}", line));
+	}
+	result.emplace_back("");
+	result.emplace_back("Recent action timeline:");
+	const auto timeline = editor->actionQueue->buildTimeline(12);
+	for (const std::string& row : timeline) {
+		result.push_back(std::format("  {}", row));
+	}
+	result.push_back(std::format("Checkpoint id: {}", checkpoint));
 
 	DialogUtil::ListDialog("Map Audit Result", result);
+}
+
+void MapActionsHandler::OnMapMoonshotStudio(wxCommandEvent& WXUNUSED(event)) {
+	Editor* editor = g_gui.GetCurrentEditor();
+	if (!editor) {
+		return;
+	}
+
+	if (editor->selection.empty()) {
+		DialogUtil::PopupDialog("Moonshot Worldgen", "Select an area first. The Moonshot generator uses selection bounds as the target region.", wxOK | wxICON_INFORMATION);
+		return;
+	}
+
+	wxTextEntryDialog prompt_dialog(
+		frame,
+		"Describe what you want to generate (examples: medieval city with roads, undead dungeon, hunt forest for level 80-120).",
+		"Moonshot Prompt-to-Layout"
+	);
+	if (prompt_dialog.ShowModal() != wxID_OK) {
+		return;
+	}
+
+	const std::string prompt_text = prompt_dialog.GetValue().ToStdString();
+	if (prompt_text.empty()) {
+		DialogUtil::PopupDialog("Moonshot Worldgen", "Prompt cannot be empty.", wxOK | wxICON_WARNING);
+		return;
+	}
+
+	PromptLayoutEngine prompt_engine;
+	const PromptDraft draft = prompt_engine.buildDraft(prompt_text);
+	const int decision = DialogUtil::PopupDialog(
+		"Moonshot Draft",
+		std::format(
+			"Detected preset: {}\nConfidence: {:.0f}%\n{}\n\nApply to selected region?",
+			draft.preset.display_name,
+			draft.confidence * 100.0,
+			draft.summary
+		),
+		wxYES | wxNO | wxCANCEL
+	);
+	if (decision == wxID_CANCEL) {
+		return;
+	}
+
+	Position min = editor->selection.minPosition();
+	Position max = editor->selection.maxPosition();
+	WorldgenRegion region {
+		.x1 = std::min(min.x, max.x),
+		.y1 = std::min(min.y, max.y),
+		.x2 = std::max(min.x, max.x),
+		.y2 = std::max(min.y, max.y),
+		.z = min.z
+	};
+
+	const bool partial_apply = decision == wxID_NO;
+	if (partial_apply) {
+		region.x2 = region.x1 + std::max(1, region.width() / 2);
+		region.y2 = region.y1 + std::max(1, region.height() / 2);
+	}
+
+	const uint64_t seed = static_cast<uint64_t>(wxGetUTCTimeMillis().GetValue());
+	WorldgenRequest request {
+		.seed = seed,
+		.preset = draft.preset,
+		.region = region,
+		.prompt = prompt_text,
+		.partial_apply = partial_apply
+	};
+
+	g_gui.CreateLoadBar("Moonshot worldgen executing...");
+	WorldgenExecutionReport report = g_moonshot_worldgen_service.execute(g_gui.GetCurrentMap(), request);
+	g_gui.DestroyLoadBar();
+
+	g_gui.SetStatusText(std::format(
+		"Moonshot: {} generated in {}x{} region",
+		request.preset.display_name,
+		request.region.width(),
+		request.region.height()
+	));
+	g_gui.RefreshView();
+
+	DialogUtil::ListDialog("Moonshot Execution Report", buildMoonshotReportLines(report));
 }

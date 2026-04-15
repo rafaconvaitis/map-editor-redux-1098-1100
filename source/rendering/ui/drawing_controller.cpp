@@ -23,11 +23,46 @@
 #include "brushes/house/house_brush.h"
 #include "brushes/house/house_exit_brush.h"
 #include "brushes/raw/raw_brush.h"
+#include "brushes/selection/moonshot_region_brush.h"
 #include "brushes/spawn/spawn_brush.h"
 #include "brushes/table/table_brush.h"
 #include "brushes/wall/wall_brush.h"
 #include "brushes/waypoint/waypoint_brush.h"
 #include "brushes/door/door_brush.h"
+
+namespace {
+void applyMoonshotRegionSelection(Editor& editor, const Position& from, const Position& to, bool append, bool subtract) {
+	const int start_x = std::min(from.x, to.x);
+	const int start_y = std::min(from.y, to.y);
+	const int end_x = std::max(from.x, to.x);
+	const int end_y = std::max(from.y, to.y);
+	const int floor = to.z;
+
+	editor.selection.start();
+	if (!append && !subtract) {
+		editor.selection.clear();
+		editor.selection.commit();
+	}
+
+	for (int x = start_x; x <= end_x; ++x) {
+		for (int y = start_y; y <= end_y; ++y) {
+			Tile* tile = editor.map.getTile(x, y, floor);
+			if (!tile) {
+				continue;
+			}
+
+			if (subtract) {
+				editor.selection.remove(tile);
+			} else {
+				editor.selection.add(tile);
+			}
+		}
+	}
+
+	editor.selection.finish();
+	editor.selection.updateSelectionCount();
+}
+}
 
 DrawingController::DrawingController(MapCanvas* canvas, Editor& editor) :
 	canvas(canvas),
@@ -44,6 +79,13 @@ DrawingController::~DrawingController() {
 void DrawingController::HandleClick(const Position& mouse_map_pos, bool shift_down, bool ctrl_down, bool alt_down) {
 	Brush* brush = g_gui.GetCurrentBrush();
 	if (brush) {
+		if (brush->is<MoonshotRegionBrush>()) {
+			dragging_draw = true;
+			last_draw_pos = mouse_map_pos;
+			canvas->Refresh();
+			return;
+		}
+
 		const BrushFootprint footprint = g_gui.GetBrushFootprint();
 		if (shift_down && brush->canDrag()) {
 			dragging_draw = true;
@@ -258,6 +300,11 @@ void DrawingController::HandleDrag(const Position& mouse_map_pos, bool shift_dow
 
 		g_gui.RefreshView();
 	} else if (dragging_draw) {
+		if (brush && brush->is<MoonshotRegionBrush>()) {
+			const int width = std::abs(canvas->last_click_map_x - mouse_map_pos.x) + 1;
+			const int height = std::abs(canvas->last_click_map_y - mouse_map_pos.y) + 1;
+			g_gui.SetStatusText(std::format("Moonshot Region: {}x{} tiles", width, height));
+		}
 		g_gui.RefreshView();
 	}
 	// Removed map_update check as this function is usually called when coords changed
@@ -270,7 +317,10 @@ void DrawingController::HandleRelease(const Position& mouse_map_pos, bool shift_
 	if (dragging_draw) {
 		Brush* brush = g_gui.GetCurrentBrush();
 		if (brush) {
-			if (brush->is<SpawnBrush>()) {
+			if (brush->is<MoonshotRegionBrush>()) {
+				const Position start(canvas->last_click_map_x, canvas->last_click_map_y, mouse_map_pos.z);
+				applyMoonshotRegionSelection(editor, start, mouse_map_pos, shift_down, ctrl_down);
+			} else if (brush->is<SpawnBrush>()) {
 				int start_map_x = std::min(canvas->last_click_map_x, mouse_map_pos.x);
 				int start_map_y = std::min(canvas->last_click_map_y, mouse_map_pos.y);
 				int end_map_x = std::max(canvas->last_click_map_x, mouse_map_pos.x);

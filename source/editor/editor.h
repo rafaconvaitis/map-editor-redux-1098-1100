@@ -70,6 +70,10 @@ public: // Functions
 	// Invalidates the action pointer
 	void addBatch(std::unique_ptr<BatchAction> action, int stacking_delay = 0);
 	void addAction(std::unique_ptr<Action> action, int stacking_delay = 0);
+	void beginSessionOperation(const std::string& label);
+	void endSessionOperation();
+	size_t createCheckpoint(const std::string& label);
+	bool rollbackToCheckpoint(size_t checkpoint_index);
 
 	// Selection
 	bool hasSelection() const {

@@ -11,6 +11,7 @@
 #include "editor/action.h"
 #include "editor/action_queue.h"
 #include "editor/selection.h"
+#include "editor/session_guard/session_guard.h"
 #include "map/map.h"
 #include "io/iomap.h"
 #include "app/settings.h"
@@ -71,6 +72,12 @@ void EditorPersistence::saveMap(Editor& editor, FileName filename, bool showdial
 	FileName converter;
 	converter.Assign(wxstr(savefile));
 	std::string map_path = nstr(converter.GetPath(wxPATH_GET_SEPARATOR | wxPATH_GET_VOLUME));
+	std::string session_guard_error;
+	if (!SessionGuard::acquire(savefile, session_guard_error)) {
+		DialogUtil::PopupDialog("Save blocked", wxstr(session_guard_error), wxOK | wxICON_WARNING);
+		return;
+	}
+	SessionGuard::writeTransactionalAutosave(editor.map, savefile);
 
 	// Make temporary backups
 	// converter.Assign(wxstr(savefile));
@@ -174,6 +181,7 @@ void EditorPersistence::saveMap(Editor& editor, FileName filename, bool showdial
 
 		// If failure, don't run the rest of the function
 		if (!success) {
+			SessionGuard::release(savefile);
 			return;
 		}
 	}
@@ -295,6 +303,7 @@ void EditorPersistence::saveMap(Editor& editor, FileName filename, bool showdial
 	}
 
 	editor.map.clearChanges();
+	SessionGuard::release(savefile);
 }
 
 void EditorPersistence::importTowns(Editor& editor, Map& imported_map, const Position& offset, ImportType house_import_type, std::unordered_map<uint32_t, uint32_t>& town_id_map) {

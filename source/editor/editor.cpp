@@ -102,6 +102,26 @@ void Editor::addAction(std::unique_ptr<Action> action, int stacking_delay) {
 	notifyStateChange();
 }
 
+void Editor::beginSessionOperation(const std::string& label) {
+	actionQueue->beginSessionOperation(label);
+}
+
+void Editor::endSessionOperation() {
+	actionQueue->endSessionOperation();
+}
+
+size_t Editor::createCheckpoint(const std::string& label) {
+	return actionQueue->createCheckpoint(label);
+}
+
+bool Editor::rollbackToCheckpoint(size_t checkpoint_index) {
+	const bool ok = actionQueue->rollbackToCheckpoint(checkpoint_index);
+	if (ok) {
+		notifyStateChange();
+	}
+	return ok;
+}
+
 void Editor::borderizeSelection() {
 	SelectionOperations::borderizeSelection(*this);
 }

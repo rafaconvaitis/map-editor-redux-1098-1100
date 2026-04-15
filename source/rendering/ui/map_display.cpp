@@ -263,6 +263,7 @@ void MapCanvas::PerformGarbageCollection() {
 
 void MapCanvas::OnPaint(wxPaintEvent& event) {
 	wxPaintDC dc(this); // validates the paint event
+	const wxLongLong render_start = wxGetLocalTimeMillis();
 	if (m_glContext) {
 		g_gl_context.EnsureContextCurrent(*m_glContext, this);
 		g_gl_context.SetFallbackCanvas(this);
@@ -320,6 +321,13 @@ void MapCanvas::OnPaint(wxPaintEvent& event) {
 
 	// FPS tracking and limiting
 	frame_pacer.UpdateAndLimit(g_settings.getInteger(Config::FRAME_RATE_LIMIT), g_settings.getBoolean(Config::SHOW_FPS_COUNTER));
+	const wxLongLong render_elapsed = wxGetLocalTimeMillis() - render_start;
+	const wxLongLong now_ms = wxGetLocalTimeMillis();
+	if (g_settings.getBoolean(Config::SHOW_FPS_COUNTER) && now_ms - m_last_render_ui_update_time > 500) {
+		const wxString render_stats = wxString::Format("Render: %lldms | Floor: %u", render_elapsed.GetValue(), floor);
+		g_gui.SetStatusText(render_stats);
+		m_last_render_ui_update_time = now_ms;
+	}
 
 	// Send newd node requests
 	if (editor.live_manager.GetClient()) {
@@ -421,7 +429,7 @@ void MapCanvas::OnMouseMove(wxMouseEvent& event) {
 	}
 
 	if (map_update) {
-		const long now_ms = wxGetLocalTimeMillis().ToLong();
+		const wxLongLong now_ms = wxGetLocalTimeMillis();
 		const bool force_update = dragging || boundbox_selection;
 		if (force_update || now_ms - m_last_hover_ui_update_time >= 16) {
 			g_gui.UpdateAutoborderPreview(Position(mouse_map_x, mouse_map_y, floor));

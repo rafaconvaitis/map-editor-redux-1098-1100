@@ -53,6 +53,7 @@
 #include "app/application.h"
 #include "ui/welcome_dialog.h"
 #include "ui/tool_options_window.h"
+#include "ui/navigation/navigation_history.h"
 
 #include "live/live_client.h"
 #include "live/live_tab.h"
@@ -135,9 +136,11 @@ GUI::GUI() :
 	pasting(false),
 	disabled_counter(0),
 	hotkeys_enabled(true) {
+	NavigationHistory::instance().load();
 }
 
 GUI::~GUI() {
+	NavigationHistory::instance().save();
 	spdlog::info("GUI destructor started");
 	spdlog::default_logger()->flush();
 
@@ -243,6 +246,7 @@ void GUI::SetScreenCenterPosition(Position position) {
 	MapTab* mapTab = GetCurrentMapTab();
 	if (mapTab) {
 		mapTab->SetScreenCenterPosition(position);
+		NavigationHistory::instance().addPosition(mapTab->GetMap()->getName(), position);
 	}
 }
 

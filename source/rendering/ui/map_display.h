@@ -182,7 +182,8 @@ private:
 	MapWindow* GetMapWindow() const;
 	bool renderer_initialized = false;
 	long m_last_gc_time = 0;
-	long m_last_hover_ui_update_time = 0;
+	wxLongLong m_last_hover_ui_update_time = 0;
+	wxLongLong m_last_render_ui_update_time = 0;
 };
 
 #endif

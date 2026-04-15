@@ -15,6 +15,7 @@
 #include "editor/action_queue.h"
 
 #include <algorithm>
+#include <wx/textdlg.h>
 
 namespace {
 	[[nodiscard]] uint32_t searchResultsLimit() {
@@ -139,6 +140,72 @@ namespace {
 			}
 		);
 	}
+
+	bool tryHandleGoToAnything(MainFrame* frame) {
+		if (!g_gui.IsEditorOpen()) {
+			return false;
+		}
+
+		wxTextEntryDialog query_dialog(
+			frame,
+			"Go to Anything (coord x,y,z | waypoint:name | town:id/name)\nLeave empty to open item finder.",
+			"Go to Anything"
+		);
+		if (query_dialog.ShowModal() != wxID_OK) {
+			return true;
+		}
+
+		const wxString raw_query = query_dialog.GetValue().Trim().Trim(false);
+		if (raw_query.empty()) {
+			return false;
+		}
+
+		wxString query = raw_query;
+		query.MakeLower();
+		if (query.Contains(",")) {
+			long x = 0;
+			long y = 0;
+			long z = 0;
+			wxArrayString parts = wxSplit(query, ',');
+			if (parts.size() == 3 && parts[0].ToLong(&x) && parts[1].ToLong(&y) && parts[2].ToLong(&z)) {
+				g_gui.SetScreenCenterPosition(Position(static_cast<uint16_t>(x), static_cast<uint16_t>(y), static_cast<uint8_t>(z)));
+				return true;
+			}
+		}
+
+		Map& map = g_gui.GetCurrentMap();
+		if (query.StartsWith("waypoint:")) {
+			const std::string waypoint_name = nstr(query.Mid(9));
+			if (Waypoint* wp = map.waypoints.getWaypoint(waypoint_name)) {
+				g_gui.SetScreenCenterPosition(wp->pos);
+				return true;
+			}
+			DialogUtil::PopupDialog("Go to Anything", "Waypoint not found.", wxOK | wxICON_INFORMATION);
+			return true;
+		}
+
+		if (query.StartsWith("town:")) {
+			const wxString town_query = query.Mid(5);
+			long town_id = 0;
+			if (town_query.ToLong(&town_id)) {
+				if (Town* town = map.towns.getTown(static_cast<uint32_t>(town_id))) {
+					g_gui.SetScreenCenterPosition(town->getTemplePosition());
+					return true;
+				}
+			} else {
+				std::string town_name = nstr(town_query);
+				if (Town* town = map.towns.getTown(town_name)) {
+					g_gui.SetScreenCenterPosition(town->getTemplePosition());
+					return true;
+				}
+			}
+			DialogUtil::PopupDialog("Go to Anything", "Town not found.", wxOK | wxICON_INFORMATION);
+			return true;
+		}
+
+		DialogUtil::PopupDialog("Go to Anything", "Unknown query format.", wxOK | wxICON_INFORMATION);
+		return true;
+	}
 }
 
 SearchHandler::SearchHandler(MainFrame* frame) :
@@ -146,6 +213,10 @@ SearchHandler::SearchHandler(MainFrame* frame) :
 }
 
 void SearchHandler::OnSearchForItem(wxCommandEvent& WXUNUSED(event)) {
+	if (tryHandleGoToAnything(frame)) {
+		return;
+	}
+
 	const bool can_search_map = g_gui.IsEditorOpen();
 	FindItemDialog dialog(
 		frame,

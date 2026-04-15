@@ -27,6 +27,7 @@
 
 #include "game/creature.h"
 #include "game/spawn.h"
+#include <format>
 
 ActionQueue::ActionQueue(Editor& editor) :
 	current(0), memory_size(0), editor(editor) {
@@ -92,6 +93,9 @@ void ActionQueue::addBatch(std::unique_ptr<BatchAction> batch, int stacking_dela
 
 	// Commit any uncommited actions...
 	batch->commit();
+	if (!active_session_label.empty() && batch->getLabel().empty()) {
+		batch->setLabel(active_session_label + " :: " + getActionName(actions.size()));
+	}
 
 	// Update title and notify state change if map changed
 	if (editor.map.doChange()) {
@@ -171,5 +175,58 @@ void ActionQueue::redo() {
 void ActionQueue::clear() {
 	actions.clear();
 	current = 0;
+	checkpoints.clear();
 	g_luaScripts.emit("actionChange");
+}
+
+void ActionQueue::beginSessionOperation(const std::string& label) {
+	active_session_label = label;
+}
+
+void ActionQueue::endSessionOperation() {
+	active_session_label.clear();
+}
+
+size_t ActionQueue::createCheckpoint(const std::string& label) {
+	checkpoints.push_back({
+		.label = label,
+		.action_index = current,
+		.map_generation = editor.map.getGeneration(),
+		.created_at = time(nullptr),
+	});
+	return checkpoints.size() - 1;
+}
+
+bool ActionQueue::rollbackToCheckpoint(size_t checkpoint_index) {
+	if (checkpoint_index >= checkpoints.size()) {
+		return false;
+	}
+
+	const size_t target_index = checkpoints[checkpoint_index].action_index;
+	if (target_index > current) {
+		while (current < target_index && canRedo()) {
+			redo();
+		}
+	} else {
+		while (current > target_index && canUndo()) {
+			undo();
+		}
+	}
+	return current == target_index;
+}
+
+std::vector<std::string> ActionQueue::buildTimeline(size_t max_items) const {
+	std::vector<std::string> rows;
+	if (actions.empty()) {
+		rows.emplace_back("No actions recorded yet.");
+		return rows;
+	}
+
+	const size_t begin = actions.size() > max_items ? actions.size() - max_items : 0;
+	for (size_t i = begin; i < actions.size(); ++i) {
+		const BatchAction* batch = actions[i].get();
+		const std::string name = batch && !batch->getLabel().empty() ? batch->getLabel() : getActionName(i);
+		rows.push_back(std::format("{} [{}] {}", i == current ? "->" : "  ", i + 1, name));
+	}
+	return rows;
 }
