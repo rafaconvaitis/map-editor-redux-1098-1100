@@ -18,6 +18,7 @@ class EraserBrush;
 class SpawnBrush;
 class DoorBrush;
 class FlagBrush;
+class MoonshotRegionBrush;
 
 class BrushManager {
 public:
@@ -142,6 +143,7 @@ public:
 	FlagBrush* rook_brush;
 	FlagBrush* nolog_brush;
 	FlagBrush* pvp_brush;
+	MoonshotRegionBrush* moonshot_region_brush;
 
 private:
 	Brush* current_brush;

@@ -115,7 +115,8 @@ MapCanvas::MapCanvas(wxWindow* parent, Editor& editor, int* attriblist) :
 	last_click_y(-1),
 	last_mmb_click_x(-1),
 	last_mmb_click_y(-1),
-	m_last_gc_time(0) {
+	m_last_gc_time(0),
+	m_last_hover_ui_update_time(0) {
 	// Context creation must happen on the main/UI thread
 	m_glContext = std::make_unique<wxGLContext>(this, g_gui.GetGLContext(this));
 	if (!m_glContext->IsOK()) {
@@ -262,6 +263,7 @@ void MapCanvas::PerformGarbageCollection() {
 
 void MapCanvas::OnPaint(wxPaintEvent& event) {
 	wxPaintDC dc(this); // validates the paint event
+	const wxLongLong render_start = wxGetLocalTimeMillis();
 	if (m_glContext) {
 		g_gl_context.EnsureContextCurrent(*m_glContext, this);
 		g_gl_context.SetFallbackCanvas(this);
@@ -275,7 +277,11 @@ void MapCanvas::OnPaint(wxPaintEvent& event) {
 
 		DrawingOptions& options = drawer->getOptions();
 		if (screenshot_controller->IsCapturing()) {
-			options.SetIngame();
+			if (screenshot_controller->ShouldUseIngameCapture()) {
+				options.SetIngame();
+			} else {
+				options.Update();
+			}
 		} else {
 			options.Update();
 		}
@@ -315,6 +321,13 @@ void MapCanvas::OnPaint(wxPaintEvent& event) {
 
 	// FPS tracking and limiting
 	frame_pacer.UpdateAndLimit(g_settings.getInteger(Config::FRAME_RATE_LIMIT), g_settings.getBoolean(Config::SHOW_FPS_COUNTER));
+	const wxLongLong render_elapsed = wxGetLocalTimeMillis() - render_start;
+	const wxLongLong now_ms = wxGetLocalTimeMillis();
+	if (g_settings.getBoolean(Config::SHOW_FPS_COUNTER) && now_ms - m_last_render_ui_update_time > 500) {
+		const wxString render_stats = wxString::Format("Render: %lldms | Floor: %u", render_elapsed.GetValue(), floor);
+		g_gui.SetStatusText(render_stats);
+		m_last_render_ui_update_time = now_ms;
+	}
 
 	// Send newd node requests
 	if (editor.live_manager.GetClient()) {
@@ -322,8 +335,8 @@ void MapCanvas::OnPaint(wxPaintEvent& event) {
 	}
 }
 
-void MapCanvas::TakeScreenshot(wxFileName path, wxString format) {
-	screenshot_controller->TakeScreenshot(path, format);
+void MapCanvas::TakeScreenshot(wxFileName path, wxString format, bool use_ingame_capture) {
+	screenshot_controller->TakeScreenshot(path, format, use_ingame_capture);
 }
 
 void MapCanvas::ScreenToMap(int screen_x, int screen_y, int* map_x, int* map_y) {
@@ -416,10 +429,15 @@ void MapCanvas::OnMouseMove(wxMouseEvent& event) {
 	}
 
 	if (map_update) {
-		g_gui.UpdateAutoborderPreview(Position(mouse_map_x, mouse_map_y, floor));
-		UpdatePositionStatus(cursor_x, cursor_y);
-		UpdateZoomStatus();
-		Refresh();
+		const wxLongLong now_ms = wxGetLocalTimeMillis();
+		const bool force_update = dragging || boundbox_selection;
+		if (force_update || now_ms - m_last_hover_ui_update_time >= 16) {
+			g_gui.UpdateAutoborderPreview(Position(mouse_map_x, mouse_map_y, floor));
+			UpdatePositionStatus(cursor_x, cursor_y);
+			UpdateZoomStatus();
+			Refresh();
+			m_last_hover_ui_update_time = now_ms;
+		}
 	}
 
 	if (g_gui.IsSelectionMode()) {

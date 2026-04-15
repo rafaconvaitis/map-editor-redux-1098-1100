@@ -11,6 +11,7 @@
 #include "editor/action.h"
 #include "editor/action_queue.h"
 #include "editor/selection.h"
+#include "editor/session_guard/session_guard.h"
 #include "map/map.h"
 #include "io/iomap.h"
 #include "app/settings.h"
@@ -23,6 +24,7 @@
 #include <sstream>
 #include <format>
 #include <unordered_map>
+#include <filesystem>
 #include <spdlog/spdlog.h>
 
 void EditorPersistence::loadMap(Editor& editor, const FileName& fn, const MapLoadOptions& load_options) {
@@ -70,6 +72,12 @@ void EditorPersistence::saveMap(Editor& editor, FileName filename, bool showdial
 	FileName converter;
 	converter.Assign(wxstr(savefile));
 	std::string map_path = nstr(converter.GetPath(wxPATH_GET_SEPARATOR | wxPATH_GET_VOLUME));
+	std::string session_guard_error;
+	if (!SessionGuard::acquire(savefile, session_guard_error)) {
+		DialogUtil::PopupDialog("Save blocked", wxstr(session_guard_error), wxOK | wxICON_WARNING);
+		return;
+	}
+	SessionGuard::writeTransactionalAutosave(editor.map, savefile);
 
 	// Make temporary backups
 	// converter.Assign(wxstr(savefile));
@@ -173,6 +181,7 @@ void EditorPersistence::saveMap(Editor& editor, FileName filename, bool showdial
 
 		// If failure, don't run the rest of the function
 		if (!success) {
+			SessionGuard::release(savefile);
 			return;
 		}
 	}
@@ -220,6 +229,71 @@ void EditorPersistence::saveMap(Editor& editor, FileName filename, bool showdial
 			std::string waypoint_filename = map_path + nstr(converter.GetName());
 			std::rename(backup_waypoint.c_str(), std::string(waypoint_filename + "." + date.str() + ".xml").c_str());
 		}
+
+		const int retention_limit = std::max(1, g_settings.getInteger(Config::BACKUP_RETENTION_LIMIT));
+		const auto pruneTimestampedBackups = [&](const std::string& base_name, const std::string& extension) {
+			namespace fs = std::filesystem;
+			std::vector<fs::directory_entry> backups;
+			const fs::path directory = fs::u8path(map_path);
+			const std::string prefix = base_name + ".";
+
+			std::error_code error;
+			if (!fs::exists(directory, error) || error) {
+				return;
+			}
+
+			for (const fs::directory_entry& entry : fs::directory_iterator(directory, error)) {
+				if (error || !entry.is_regular_file()) {
+					continue;
+				}
+
+				const std::string filename = entry.path().filename().string();
+				if (!filename.starts_with(prefix) || !filename.ends_with(extension)) {
+					continue;
+				}
+
+				const size_t min_timestamped_length = prefix.size() + extension.size() + 1;
+				if (filename.size() < min_timestamped_length) {
+					continue; // ignore live file (base.ext) and malformed names
+				}
+
+				const size_t timestamp_length = filename.size() - prefix.size() - extension.size();
+				if (timestamp_length == 0) {
+					continue; // current live file (base.ext)
+				}
+
+				backups.push_back(entry);
+			}
+
+			if (static_cast<int>(backups.size()) <= retention_limit) {
+				return;
+			}
+
+			std::sort(backups.begin(), backups.end(), [](const fs::directory_entry& left, const fs::directory_entry& right) {
+				std::error_code left_error;
+				std::error_code right_error;
+				const auto left_time = left.last_write_time(left_error);
+				const auto right_time = right.last_write_time(right_error);
+				if (left_error || right_error) {
+					return left.path().filename().string() > right.path().filename().string();
+				}
+				return left_time > right_time;
+			});
+
+			for (size_t index = static_cast<size_t>(retention_limit); index < backups.size(); ++index) {
+				std::error_code remove_error;
+				fs::remove(backups[index].path(), remove_error);
+			}
+		};
+
+		converter.SetFullName(wxstr(savefile));
+		pruneTimestampedBackups(nstr(converter.GetName()), ".otbm");
+		converter.SetFullName(wxstr(editor.map.getHouseFilename()));
+		pruneTimestampedBackups(nstr(converter.GetName()), ".xml");
+		converter.SetFullName(wxstr(editor.map.getSpawnFilename()));
+		pruneTimestampedBackups(nstr(converter.GetName()), ".xml");
+		converter.SetFullName(wxstr(editor.map.getWaypointFilename()));
+		pruneTimestampedBackups(nstr(converter.GetName()), ".xml");
 	} else {
 		// Delete the temporary files
 		std::remove(backup_otbm.c_str());
@@ -229,6 +303,7 @@ void EditorPersistence::saveMap(Editor& editor, FileName filename, bool showdial
 	}
 
 	editor.map.clearChanges();
+	SessionGuard::release(savefile);
 }
 
 void EditorPersistence::importTowns(Editor& editor, Map& imported_map, const Position& offset, ImportType house_import_type, std::unordered_map<uint32_t, uint32_t>& town_id_map) {

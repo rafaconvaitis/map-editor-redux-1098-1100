@@ -10,10 +10,16 @@
 #include "ui/about_window.h"
 #include "ui/dat_debug_view.h"
 #include "app/preferences.h"
+#include "app/settings.h"
+#include "app/diagnostics/asset_diagnostics.h"
+#include "io/export_pack/export_pack_service.h"
 #include "ui/extension_window.h"
 #include "game/creatures.h"
 #include "app/managers/version_manager.h"
+#include "editor/validation/presave_validator.h"
 #include "ui/controls/sortable_list_box.h"
+#include <wx/dirdlg.h>
+#include <wx/filename.h>
 
 FileMenuHandler::FileMenuHandler(MainFrame* frame, MainMenuBar* menubar) :
 	frame(frame), menubar(menubar) {
@@ -30,10 +36,48 @@ void FileMenuHandler::OnOpen(wxCommandEvent& WXUNUSED(event)) {
 }
 
 void FileMenuHandler::OnSave(wxCommandEvent& WXUNUSED(event)) {
+	if (g_gui.IsEditorOpen()) {
+		Map& map = g_gui.GetCurrentMap();
+		const PreSaveValidationReport report = PreSaveValidator::validate(map);
+		if (!report.issues.empty()) {
+			wxString message;
+			for (const std::string& line : report.toLines()) {
+				message += wxstr(line) + "\n";
+			}
+			message += "\nApply auto-fix before saving?";
+			const int decision = DialogUtil::PopupDialog("Pre-save validation", message, wxYES_NO | wxCANCEL | wxICON_WARNING);
+			if (decision == wxID_CANCEL) {
+				return;
+			}
+			if (decision == wxID_YES) {
+				const PreSaveValidationReport fixed = PreSaveValidator::autoFix(map);
+				DialogUtil::ListDialog("Pre-save auto-fix report", fixed.toLines());
+			}
+		}
+	}
 	g_gui.SaveMap();
 }
 
 void FileMenuHandler::OnSaveAs(wxCommandEvent& WXUNUSED(event)) {
+	if (g_gui.IsEditorOpen()) {
+		Map& map = g_gui.GetCurrentMap();
+		const PreSaveValidationReport report = PreSaveValidator::validate(map);
+		if (!report.issues.empty()) {
+			wxString message;
+			for (const std::string& line : report.toLines()) {
+				message += wxstr(line) + "\n";
+			}
+			message += "\nApply auto-fix before Save As?";
+			const int decision = DialogUtil::PopupDialog("Pre-save validation", message, wxYES_NO | wxCANCEL | wxICON_WARNING);
+			if (decision == wxID_CANCEL) {
+				return;
+			}
+			if (decision == wxID_YES) {
+				const PreSaveValidationReport fixed = PreSaveValidator::autoFix(map);
+				DialogUtil::ListDialog("Pre-save auto-fix report", fixed.toLines());
+			}
+		}
+	}
 	g_gui.SaveMapAs();
 }
 
@@ -76,6 +120,51 @@ void FileMenuHandler::OnImportMonsterData(wxCommandEvent& WXUNUSED(event)) {
 
 void FileMenuHandler::OnImportMinimap(wxCommandEvent& WXUNUSED(event)) {
 	ASSERT(g_gui.IsEditorOpen());
+	if (!g_gui.GetCurrentMapTab()) {
+		return;
+	}
+
+	wxString export_directory = wxstr(g_settings.getString(Config::MINIMAP_EXPORT_DIR));
+	if (export_directory.empty()) {
+		export_directory = wxstr(g_settings.getString(Config::SCREENSHOT_DIRECTORY));
+	}
+	if (export_directory.empty()) {
+		export_directory = wxGetCwd();
+	}
+
+	wxDirDialog dialog(g_gui.root, "Select export directory for minimap screenshot", export_directory, wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+	if (dialog.ShowModal() != wxID_OK) {
+		return;
+	}
+
+	const wxFileName export_dir_info = wxFileName::DirName(dialog.GetPath());
+	export_directory = export_dir_info.GetFullPath();
+	g_settings.setString(Config::MINIMAP_EXPORT_DIR, nstr(export_directory));
+
+	const bool previous_show_as_minimap = g_settings.getBoolean(Config::SHOW_AS_MINIMAP);
+	const bool previous_show_only_colors = g_settings.getBoolean(Config::SHOW_ONLY_TILEFLAGS);
+	const bool previous_show_extra = g_settings.getBoolean(Config::SHOW_EXTRA);
+
+	g_settings.setInteger(Config::SHOW_AS_MINIMAP, true);
+	g_settings.setInteger(Config::SHOW_ONLY_TILEFLAGS, true);
+	g_settings.setInteger(Config::SHOW_EXTRA, false);
+	g_gui.UpdateMenubar();
+	g_gui.RefreshView();
+
+	g_gui.GetCurrentMapTab()->GetView()->GetCanvas()->TakeScreenshot(export_dir_info, "png", false);
+	std::string export_pack_error;
+	if (!ExportPackService::writeMetadataPackage(g_gui.GetCurrentMap(), nstr(export_directory), export_pack_error)) {
+		DialogUtil::PopupDialog("Export metadata", wxstr(export_pack_error), wxOK | wxICON_WARNING);
+	}
+
+	// Restore normal viewport flags after scheduling capture.
+	frame->CallAfter([previous_show_as_minimap, previous_show_only_colors, previous_show_extra]() {
+		g_settings.setInteger(Config::SHOW_AS_MINIMAP, previous_show_as_minimap);
+		g_settings.setInteger(Config::SHOW_ONLY_TILEFLAGS, previous_show_only_colors);
+		g_settings.setInteger(Config::SHOW_EXTRA, previous_show_extra);
+		g_gui.UpdateMenubar();
+		g_gui.RefreshView();
+	});
 }
 
 void FileMenuHandler::OnExportTilesets(wxCommandEvent& WXUNUSED(event)) {
@@ -92,6 +181,18 @@ void FileMenuHandler::OnReloadDataFiles(wxCommandEvent& WXUNUSED(event)) {
 	g_version.LoadVersion(g_version.GetCurrentVersionID(), error, warnings, true);
 	DialogUtil::PopupDialog("Error", error, wxOK);
 	DialogUtil::ListDialog("Warnings", warnings);
+	if (const ClientVersion* version = g_version.getLoadedVersion()) {
+		const AssetDiagnosticsReport report = AssetDiagnostics::analyze(*version);
+		std::vector<std::string> lines = report.issues;
+		if (!report.repair_hints.empty()) {
+			lines.emplace_back("");
+			lines.emplace_back("Repair hints:");
+			for (const std::string& hint : report.repair_hints) {
+				lines.push_back(" - " + hint);
+			}
+		}
+		DialogUtil::ListDialog("Asset diagnostics", lines);
+	}
 }
 
 void FileMenuHandler::OnMissingItemsReport(wxCommandEvent& WXUNUSED(event)) {

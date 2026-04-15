@@ -30,6 +30,13 @@ class BatchAction;
 
 class ActionQueue {
 public:
+	struct Checkpoint {
+		std::string label;
+		size_t action_index = 0;
+		uint64_t map_generation = 0;
+		time_t created_at = 0;
+	};
+
 	ActionQueue(Editor& editor);
 	virtual ~ActionQueue();
 
@@ -43,6 +50,15 @@ public:
 
 	void addBatch(std::unique_ptr<BatchAction> action, int stacking_delay = 0);
 	void addAction(std::unique_ptr<Action> action, int stacking_delay = 0);
+	void beginSessionOperation(const std::string& label);
+	void endSessionOperation();
+
+	size_t createCheckpoint(const std::string& label);
+	bool rollbackToCheckpoint(size_t checkpoint_index);
+	const std::vector<Checkpoint>& getCheckpoints() const {
+		return checkpoints;
+	}
+	std::vector<std::string> buildTimeline(size_t max_items = 50) const;
 
 	void undo();
 	void redo();
@@ -68,6 +84,8 @@ protected:
 	size_t memory_size;
 	Editor& editor;
 	ActionList actions;
+	std::string active_session_label;
+	std::vector<Checkpoint> checkpoints;
 };
 
 #endif

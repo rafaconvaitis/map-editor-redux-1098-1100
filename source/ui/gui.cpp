@@ -21,6 +21,8 @@
 #include <spdlog/spdlog.h>
 #include <wx/display.h>
 #include <format>
+#include <sstream>
+#include <vector>
 
 #include "ui/gui.h"
 #include "util/file_system.h"
@@ -51,6 +53,7 @@
 #include "app/application.h"
 #include "ui/welcome_dialog.h"
 #include "ui/tool_options_window.h"
+#include "ui/navigation/navigation_history.h"
 
 #include "live/live_client.h"
 #include "live/live_tab.h"
@@ -93,6 +96,34 @@ void syncCreatureToolBrushSizeSetting(const GUI& gui) {
 
 	g_settings.setInteger(Config::CURRENT_SPAWN_RADIUS, std::max(1, gui.GetBrushSize()));
 }
+
+void rememberRecentBrush(const Brush* brush) {
+	if (!brush) {
+		return;
+	}
+
+	constexpr size_t max_entries = 12;
+	const std::string selected_name = brush->getName();
+	std::vector<std::string> names;
+	std::istringstream stream(g_settings.getString(Config::RECENT_BRUSHES));
+	for (std::string line; std::getline(stream, line);) {
+		if (!line.empty()) {
+			names.push_back(line);
+		}
+	}
+
+	std::erase(names, selected_name);
+	names.insert(names.begin(), selected_name);
+	if (names.size() > max_entries) {
+		names.resize(max_entries);
+	}
+
+	std::ostringstream serialized;
+	for (const std::string& name : names) {
+		serialized << name << '\n';
+	}
+	g_settings.setString(Config::RECENT_BRUSHES, serialized.str());
+}
 }
 
 // GUI class implementation
@@ -105,9 +136,11 @@ GUI::GUI() :
 	pasting(false),
 	disabled_counter(0),
 	hotkeys_enabled(true) {
+	NavigationHistory::instance().load();
 }
 
 GUI::~GUI() {
+	NavigationHistory::instance().save();
 	spdlog::info("GUI destructor started");
 	spdlog::default_logger()->flush();
 
@@ -213,6 +246,7 @@ void GUI::SetScreenCenterPosition(Position position) {
 	MapTab* mapTab = GetCurrentMapTab();
 	if (mapTab) {
 		mapTab->SetScreenCenterPosition(position);
+		NavigationHistory::instance().addPosition(mapTab->GetMap()->getName(), position);
 	}
 }
 
@@ -311,6 +345,7 @@ void GUI::FillDoodadPreviewBuffer() {
 
 void GUI::SelectBrush() {
 	g_brush_manager.SelectBrush();
+	rememberRecentBrush(GetCurrentBrush());
 	if (tool_options) {
 		tool_options->SetActiveBrush(GetCurrentBrush());
 	}
@@ -318,6 +353,7 @@ void GUI::SelectBrush() {
 }
 bool GUI::SelectBrush(const Brush* brush, PaletteType pt) {
 	const bool changed = g_brush_manager.SelectBrush(brush, pt);
+	rememberRecentBrush(GetCurrentBrush());
 	if (tool_options) {
 		tool_options->SetActiveBrush(GetCurrentBrush());
 	}
@@ -326,6 +362,7 @@ bool GUI::SelectBrush(const Brush* brush, PaletteType pt) {
 }
 void GUI::SelectPreviousBrush() {
 	g_brush_manager.SelectPreviousBrush();
+	rememberRecentBrush(GetCurrentBrush());
 	if (tool_options) {
 		tool_options->SetActiveBrush(GetCurrentBrush());
 	}
@@ -333,6 +370,7 @@ void GUI::SelectPreviousBrush() {
 }
 void GUI::SelectBrushInternal(Brush* brush) {
 	g_brush_manager.SelectBrushInternal(brush);
+	rememberRecentBrush(GetCurrentBrush());
 	if (tool_options) {
 		tool_options->SetActiveBrush(GetCurrentBrush());
 	}

@@ -26,6 +26,7 @@
 #include "brushes/house/house_brush.h"
 #include "brushes/house/house_exit_brush.h"
 #include "brushes/raw/raw_brush.h"
+#include "brushes/selection/moonshot_region_brush.h"
 #include "brushes/spawn/spawn_brush.h"
 #include "brushes/table/table_brush.h"
 #include "brushes/wall/wall_brush.h"
@@ -81,6 +82,7 @@ void Brushes::init() {
 	addManagedBrush(g_brush_manager.optional_brush);
 	addManagedBrush(g_brush_manager.eraser);
 	addManagedBrush(g_brush_manager.spawn_brush);
+	addManagedBrush(g_brush_manager.moonshot_region_brush);
 
 	addManagedBrush(g_brush_manager.normal_door_brush, WALL_DOOR_NORMAL);
 	addManagedBrush(g_brush_manager.locked_door_brush, WALL_DOOR_LOCKED);

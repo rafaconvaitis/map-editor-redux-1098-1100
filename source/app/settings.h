@@ -167,6 +167,7 @@ namespace Config {
 		HOTKEY_7,
 		HOTKEY_8,
 		HOTKEY_9,
+		RECENT_BRUSHES,
 		RECENT_FILES,
 
 		RECENT_EDITED_MAP_PATH,
@@ -225,6 +226,7 @@ namespace Config {
 
 		// Add new settings at the end to preserve enum ordering for persisted settings
 		SHOW_MISSING_ITEMS_WARNING,
+		BACKUP_RETENTION_LIMIT,
 
 		LAST,
 	};

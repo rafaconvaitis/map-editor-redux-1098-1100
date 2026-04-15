@@ -21,6 +21,8 @@ public:
 	void OnRandomizeMap(wxCommandEvent& event);
 	void OnMapCleanup(wxCommandEvent& event);
 	void OnMapCleanInvalidZones(wxCommandEvent& event);
+	void OnMapAuditAndFix(wxCommandEvent& event);
+	void OnMapMoonshotStudio(wxCommandEvent& event);
 
 private:
 	MainFrame* frame;

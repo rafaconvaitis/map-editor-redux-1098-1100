@@ -9,6 +9,7 @@
 #include "brushes/door/door_brush.h"
 #include "brushes/flag/flag_brush.h"
 #include "brushes/house/house_exit_brush.h"
+#include "brushes/selection/moonshot_region_brush.h"
 #include "brushes/spawn/spawn_brush.h"
 #include "brushes/waypoint/waypoint_brush.h"
 #include "game/sprites.h"
@@ -430,7 +431,9 @@ bool ToolOptionsSurface::HasBrushSizeControls() const {
 		return false;
 	}
 
-	return !active_brush->is<WaypointBrush>() && !active_brush->is<HouseExitBrush>();
+	return !active_brush->is<WaypointBrush>() &&
+		!active_brush->is<HouseExitBrush>() &&
+		!active_brush->is<MoonshotRegionBrush>();
 }
 
 bool ToolOptionsSurface::HasThicknessControl() const {
@@ -477,6 +480,9 @@ std::vector<Brush*> ToolOptionsSurface::GetDefaultTools() const {
 	if (g_brush_manager.pvp_brush) {
 		brushes.push_back(g_brush_manager.pvp_brush);
 	}
+	if (g_brush_manager.moonshot_region_brush) {
+		brushes.push_back(g_brush_manager.moonshot_region_brush);
+	}
 	if (g_brush_manager.normal_door_brush) {
 		brushes.push_back(g_brush_manager.normal_door_brush);
 	}
@@ -488,6 +494,9 @@ std::vector<Brush*> ToolOptionsSurface::GetDefaultTools() const {
 	}
 	if (g_brush_manager.quest_door_brush) {
 		brushes.push_back(g_brush_manager.quest_door_brush);
+	}
+	if (g_brush_manager.normal_door_alt_brush) {
+		brushes.push_back(g_brush_manager.normal_door_alt_brush);
 	}
 	if (g_brush_manager.hatch_door_brush) {
 		brushes.push_back(g_brush_manager.hatch_door_brush);
@@ -563,7 +572,7 @@ void ToolOptionsSurface::OnToolButton(wxCommandEvent& event) {
 			case ToolButtonAction::SelectBrush:
 				if (entry.brush) {
 					active_brush = entry.brush;
-					g_gui.SelectBrush(entry.brush);
+					g_gui.SelectBrush(entry.brush, TILESET_TERRAIN);
 					g_gui.SetStatusText(std::format("Selected Tool: {}", entry.brush->getName()));
 				}
 				break;

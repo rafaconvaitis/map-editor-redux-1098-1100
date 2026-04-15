@@ -286,8 +286,6 @@ void MapDrawer::Release() {
 }
 
 void MapDrawer::Draw() {
-	g_gui.gfx.updateTime();
-
 	light_buffer.Clear();
 	creature_name_drawer->clear();
 	options.transient_selection_bounds = std::nullopt;
@@ -384,13 +382,14 @@ void MapDrawer::DrawBackground() {
 
 void MapDrawer::DrawMap() {
 	bool live_client = editor.live_manager.IsClient();
+	auto* atlas_manager = g_gui.gfx.getAtlasManager();
 
 	// Enable texture mode
 
 	for (int map_z = view.start_z; map_z >= view.superend_z; map_z--) {
 		if (options.isDrawLight() && options.draw_floor_shadow && view.end_z >= GROUND_LAYER + 1 && map_z == view.end_z) {
-			if (g_gui.gfx.ensureAtlasManager()) {
-				sprite_batch->drawRect(0.0f, 0.0f, view.screensize_x * view.zoom, view.screensize_y * view.zoom, glm::vec4(0.0f, 0.0f, 0.0f, 0.5f), *g_gui.gfx.getAtlasManager());
+			if (atlas_manager) {
+				sprite_batch->drawRect(0.0f, 0.0f, view.screensize_x * view.zoom, view.screensize_y * view.zoom, glm::vec4(0.0f, 0.0f, 0.0f, 0.5f), *atlas_manager);
 			}
 		}
 
@@ -402,6 +401,20 @@ void MapDrawer::DrawMap() {
 			DrawMapLayer(*sprite_batch, map_z, live_client);
 		} else if (options.isDrawLight()) {
 			DrawMapLayer(hidden_floor_light_batch, map_z, live_client, true);
+		}
+
+		if (options.experimental_fog && !options.isDrawLight() && map_z < view.end_z) {
+			const float depth = static_cast<float>(view.end_z - map_z);
+			const float alpha = std::clamp(depth * 0.045f, 0.0f, 0.30f);
+			if (alpha > 0.0f && atlas_manager) {
+				sprite_batch->drawRect(
+					0.0f,
+					0.0f,
+					view.screensize_x * view.zoom,
+					view.screensize_y * view.zoom,
+					glm::vec4(0.14f, 0.17f, 0.20f, alpha),
+					*atlas_manager);
+			}
 		}
 
 		preview_drawer->draw(*sprite_batch, canvas, view, map_z, options, editor, item_drawer.get(), sprite_drawer.get(), creature_drawer.get(), options.current_house_id);

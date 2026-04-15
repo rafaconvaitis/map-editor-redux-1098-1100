@@ -77,6 +77,8 @@ void MenuBarActionManager::RegisterActions(MainMenuBar* mb, std::unordered_map<s
 	MAKE_ACTION_ICON(EDIT_TOWNS, wxITEM_NORMAL, ICON_CITY, OnMapEditTowns);
 	MAKE_ACTION_ICON(EDIT_ITEMS, wxITEM_NORMAL, ICON_CUBES, OnMapEditItems);
 	MAKE_ACTION_ICON(EDIT_MONSTERS, wxITEM_NORMAL, ICON_DRAGON, OnMapEditMonsters);
+	MAKE_ACTION_ICON(MAP_MOONSHOT_STUDIO, wxITEM_NORMAL, ICON_WAND_MAGIC, OnMapMoonshotStudio);
+	MAKE_ACTION_ICON(MAP_AUDIT_AND_FIX, wxITEM_NORMAL, ICON_CLIPBOARD_CHECK, OnMapAuditAndFix);
 
 	MAKE_ACTION_ICON(CLEAR_INVALID_HOUSES, wxITEM_NORMAL, ICON_HOUSE_CRACK, OnClearHouseTiles);
 	MAKE_ACTION_ICON(CLEAR_MODIFIED_STATE, wxITEM_NORMAL, ICON_ERASER, OnClearModifiedState);
@@ -219,7 +221,7 @@ void MenuBarActionManager::UpdateState(MainMenuBar* mb) {
 
 	mb->EnableItem(IMPORT_MAP, is_local);
 	mb->EnableItem(IMPORT_MONSTERS, is_local);
-	mb->EnableItem(IMPORT_MINIMAP, false);
+	mb->EnableItem(IMPORT_MINIMAP, is_local);
 
 	mb->EnableItem(EXPORT_TILESETS, loaded);
 
@@ -263,6 +265,8 @@ void MenuBarActionManager::UpdateState(MainMenuBar* mb) {
 	mb->EnableItem(EDIT_ITEMS, false);
 	mb->EnableItem(EDIT_MONSTERS, false);
 
+	mb->EnableItem(MAP_MOONSHOT_STUDIO, is_local);
+	mb->EnableItem(MAP_AUDIT_AND_FIX, is_local);
 	mb->EnableItem(MAP_CLEANUP, is_local);
 	mb->EnableItem(MAP_PROPERTIES, is_local);
 	mb->EnableItem(MAP_STATISTICS, is_local);

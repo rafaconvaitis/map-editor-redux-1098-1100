@@ -76,6 +76,13 @@ GeneralPage::GeneralPage(wxWindow* parent) : ScrollablePreferencesPage(parent) {
 		"Create a backup when saving maps so you have a recovery point if something goes wrong.",
 		g_settings.getBoolean(Config::ALWAYS_MAKE_BACKUP)
 	);
+	backup_retention_spin = new wxSpinCtrl(safety_section, wxID_ANY, i2ws(g_settings.getInteger(Config::BACKUP_RETENTION_LIMIT)), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 200);
+	PreferencesLayout::AddControlRow(
+		safety_section,
+		"Backup retention per map",
+		"Maximum number of timestamped backup versions kept for each map before older ones are pruned.",
+		backup_retention_spin
+	);
 	enable_tileset_editing_chkbox = PreferencesLayout::AddCheckBoxRow(
 		safety_section,
 		"Enable tileset editing",
@@ -160,6 +167,7 @@ void GeneralPage::UpdatePositionPreview() {
 void GeneralPage::Apply() {
 	g_settings.setInteger(Config::WELCOME_DIALOG, show_welcome_dialog_chkbox->GetValue());
 	g_settings.setInteger(Config::ALWAYS_MAKE_BACKUP, always_make_backup_chkbox->GetValue());
+	g_settings.setInteger(Config::BACKUP_RETENTION_LIMIT, backup_retention_spin->GetValue());
 	g_settings.setInteger(Config::USE_UPDATER, update_check_on_startup_chkbox->GetValue());
 	g_settings.setInteger(Config::ONLY_ONE_INSTANCE, only_one_instance_chkbox->GetValue());
 	g_settings.setInteger(Config::UNDO_SIZE, undo_size_spin->GetValue());

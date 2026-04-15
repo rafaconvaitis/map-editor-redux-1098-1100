@@ -17,6 +17,7 @@ set(rme_H
     ${CMAKE_CURRENT_LIST_DIR}/app/settings.h
     ${CMAKE_CURRENT_LIST_DIR}/app/threads.h
     ${CMAKE_CURRENT_LIST_DIR}/app/updater.h
+    ${CMAKE_CURRENT_LIST_DIR}/app/diagnostics/asset_diagnostics.h
     ${CMAKE_CURRENT_LIST_DIR}/app/managers/version_manager.h
 
     ${CMAKE_CURRENT_LIST_DIR}/brushes/brush.h
@@ -43,6 +44,7 @@ set(rme_H
     ${CMAKE_CURRENT_LIST_DIR}/brushes/house/house_brush.h
     ${CMAKE_CURRENT_LIST_DIR}/brushes/house/house_exit_brush.h
     ${CMAKE_CURRENT_LIST_DIR}/brushes/raw/raw_brush.h
+    ${CMAKE_CURRENT_LIST_DIR}/brushes/selection/moonshot_region_brush.h
     ${CMAKE_CURRENT_LIST_DIR}/brushes/spawn/spawn_brush.h
     ${CMAKE_CURRENT_LIST_DIR}/brushes/table/table_border_calculator.h
     ${CMAKE_CURRENT_LIST_DIR}/brushes/table/table_brush.h
@@ -67,6 +69,9 @@ set(rme_H
     ${CMAKE_CURRENT_LIST_DIR}/editor/operations/map_version_changer.h
     ${CMAKE_CURRENT_LIST_DIR}/editor/persistence/editor_persistence.h
     ${CMAKE_CURRENT_LIST_DIR}/editor/persistence/map_load_options.h
+    ${CMAKE_CURRENT_LIST_DIR}/editor/rules/map_rule_engine.h
+    ${CMAKE_CURRENT_LIST_DIR}/editor/session_guard/session_guard.h
+    ${CMAKE_CURRENT_LIST_DIR}/editor/validation/presave_validator.h
     ${CMAKE_CURRENT_LIST_DIR}/editor/persistence/tileset_exporter.h
 
     ${CMAKE_CURRENT_LIST_DIR}/editor/editor_tabs.h
@@ -117,6 +122,7 @@ set(rme_H
     ${CMAKE_CURRENT_LIST_DIR}/io/iomap.h
     ${CMAKE_CURRENT_LIST_DIR}/io/iomap_otbm.h
     ${CMAKE_CURRENT_LIST_DIR}/io/map_xml_io.h
+    ${CMAKE_CURRENT_LIST_DIR}/io/export_pack/export_pack_service.h
     ${CMAKE_CURRENT_LIST_DIR}/io/otbm/item_serialization_otbm.h
     ${CMAKE_CURRENT_LIST_DIR}/io/otbm/header_serialization_otbm.h
     ${CMAKE_CURRENT_LIST_DIR}/io/otbm/waypoint_serialization_otbm.h
@@ -137,6 +143,7 @@ set(rme_H
     ${CMAKE_CURRENT_LIST_DIR}/map/operations/map_processor.h
     ${CMAKE_CURRENT_LIST_DIR}/map/map_region.h
     ${CMAKE_CURRENT_LIST_DIR}/map/map_search.h
+    ${CMAKE_CURRENT_LIST_DIR}/map/map_health_score.h
     ${CMAKE_CURRENT_LIST_DIR}/map/map_statistics.h
     ${CMAKE_CURRENT_LIST_DIR}/map/map_converter.h
     ${CMAKE_CURRENT_LIST_DIR}/map/map_spawn_manager.h
@@ -146,6 +153,15 @@ set(rme_H
     ${CMAKE_CURRENT_LIST_DIR}/map/tile.h
     ${CMAKE_CURRENT_LIST_DIR}/map/tile_operations.h
     ${CMAKE_CURRENT_LIST_DIR}/map/tileset.h
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/worldgen_types.h
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/worldgen_preset_registry.h
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/worldgen_mutation_pipeline.h
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/prompt_layout_engine.h
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/validation_engine.h
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/semantic_diff_engine.h
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/perf_observability.h
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/moonshot_service.h
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/variation_profile.h
     ${CMAKE_CURRENT_LIST_DIR}/net/net_connection.h
     ${CMAKE_CURRENT_LIST_DIR}/net/process_com.h
     ${CMAKE_CURRENT_LIST_DIR}/palette/palette_brushlist.h
@@ -305,6 +321,7 @@ set(rme_H
     ${CMAKE_CURRENT_LIST_DIR}/ui/managers/search_manager.h
     ${CMAKE_CURRENT_LIST_DIR}/ui/managers/welcome_manager.h
     ${CMAKE_CURRENT_LIST_DIR}/ui/managers/gl_context_manager.h
+    ${CMAKE_CURRENT_LIST_DIR}/ui/navigation/navigation_history.h
 
     ${CMAKE_CURRENT_LIST_DIR}/ui/theme.h
     ${CMAKE_CURRENT_LIST_DIR}/ui/main_frame.h
@@ -433,6 +450,7 @@ set(rme_SRC
     ${CMAKE_CURRENT_LIST_DIR}/brushes/house/house_brush.cpp
     ${CMAKE_CURRENT_LIST_DIR}/brushes/house/house_exit_brush.cpp
     ${CMAKE_CURRENT_LIST_DIR}/brushes/raw/raw_brush.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/brushes/selection/moonshot_region_brush.cpp
     ${CMAKE_CURRENT_LIST_DIR}/brushes/spawn/spawn_brush.cpp
     ${CMAKE_CURRENT_LIST_DIR}/brushes/table/table_border_calculator.cpp
     ${CMAKE_CURRENT_LIST_DIR}/brushes/table/table_brush.cpp
@@ -447,6 +465,8 @@ set(rme_SRC
     ${CMAKE_CURRENT_LIST_DIR}/brushes/waypoint/waypoint_brush.cpp
     ${CMAKE_CURRENT_LIST_DIR}/editor/action.cpp
     ${CMAKE_CURRENT_LIST_DIR}/editor/action_queue.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/editor/session_guard/session_guard.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/editor/validation/presave_validator.cpp
     ${CMAKE_CURRENT_LIST_DIR}/editor/copybuffer.cpp
     ${CMAKE_CURRENT_LIST_DIR}/editor/dirty_list.cpp
     ${CMAKE_CURRENT_LIST_DIR}/editor/editor.cpp
@@ -455,6 +475,7 @@ set(rme_SRC
     ${CMAKE_CURRENT_LIST_DIR}/editor/operations/draw_operations.cpp
     ${CMAKE_CURRENT_LIST_DIR}/editor/operations/selection_operations.cpp
     ${CMAKE_CURRENT_LIST_DIR}/editor/operations/map_version_changer.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/editor/rules/map_rule_engine.cpp
     ${CMAKE_CURRENT_LIST_DIR}/editor/persistence/editor_persistence.cpp
     ${CMAKE_CURRENT_LIST_DIR}/editor/persistence/tileset_exporter.cpp
 
@@ -497,6 +518,7 @@ set(rme_SRC
     ${CMAKE_CURRENT_LIST_DIR}/io/iomap.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/iomap_otbm.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/map_xml_io.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/io/export_pack/export_pack_service.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/otbm/item_serialization_otbm.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/otbm/header_serialization_otbm.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/otbm/waypoint_serialization_otbm.cpp
@@ -514,6 +536,7 @@ set(rme_SRC
     ${CMAKE_CURRENT_LIST_DIR}/map/operations/map_processor.cpp
     ${CMAKE_CURRENT_LIST_DIR}/map/map_region.cpp
     ${CMAKE_CURRENT_LIST_DIR}/map/map_search.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/map/map_health_score.cpp
     ${CMAKE_CURRENT_LIST_DIR}/map/map_statistics.cpp
     ${CMAKE_CURRENT_LIST_DIR}/map/map_converter.cpp
     ${CMAKE_CURRENT_LIST_DIR}/map/map_spawn_manager.cpp
@@ -521,6 +544,14 @@ set(rme_SRC
     ${CMAKE_CURRENT_LIST_DIR}/map/tile.cpp
     ${CMAKE_CURRENT_LIST_DIR}/map/tile_operations.cpp
     ${CMAKE_CURRENT_LIST_DIR}/map/tileset.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/worldgen_preset_registry.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/worldgen_mutation_pipeline.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/prompt_layout_engine.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/validation_engine.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/semantic_diff_engine.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/perf_observability.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/moonshot_service.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/worldgen/variation_profile.cpp
     ${CMAKE_CURRENT_LIST_DIR}/mkpch.cpp
     ${CMAKE_CURRENT_LIST_DIR}/net/net_connection.cpp
     ${CMAKE_CURRENT_LIST_DIR}/net/process_com.cpp
@@ -668,6 +699,7 @@ set(rme_SRC
 
     ${CMAKE_CURRENT_LIST_DIR}/ui/map/export_tilesets_window.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ui/gui.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/ui/navigation/navigation_history.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ui/gui_autoborder_ext.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ui/main_frame.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ui/main_menubar.cpp
@@ -693,6 +725,7 @@ set(rme_SRC
     ${CMAKE_CURRENT_LIST_DIR}/ui/managers/search_manager.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ui/managers/welcome_manager.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ui/managers/gl_context_manager.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/app/diagnostics/asset_diagnostics.cpp
 
     ${CMAKE_CURRENT_LIST_DIR}/ui/map_popup_menu.cpp
     ${CMAKE_CURRENT_LIST_DIR}/ui/map_tab.cpp

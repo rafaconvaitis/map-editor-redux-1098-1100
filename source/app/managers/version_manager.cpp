@@ -110,6 +110,28 @@ bool VersionManager::LoadDataFiles(wxString& error, std::vector<std::string>& wa
 	asset_request.otb_path = wxFileName(base_data_path + "items.otb");
 	asset_request.xml_path = wxFileName(base_data_path + "items.xml");
 
+	if (!metadata_path.FileExists()) {
+		warnings.push_back(std::format("Missing DAT metadata file: {}", metadata_path.GetFullPath().ToStdString()));
+	}
+	if (!sprites_path.FileExists()) {
+		warnings.push_back(std::format("Missing SPR sprite file: {}", sprites_path.GetFullPath().ToStdString()));
+	}
+	if (!asset_request.otb_path.FileExists()) {
+		warnings.push_back(std::format("Missing items.otb file: {}", asset_request.otb_path.GetFullPath().ToStdString()));
+	}
+	if (!asset_request.xml_path.FileExists()) {
+		warnings.push_back(std::format("Missing items.xml file: {}", asset_request.xml_path.GetFullPath().ToStdString()));
+	}
+
+	const wxFileName monster_dir(base_data_path + "monster");
+	const wxFileName npc_dir(base_data_path + "npc");
+	if (!monster_dir.DirExists()) {
+		warnings.push_back(std::format("Monster directory not found: {}", monster_dir.GetFullPath().ToStdString()));
+	}
+	if (!npc_dir.DirExists()) {
+		warnings.push_back(std::format("NPC directory not found: {}", npc_dir.GetFullPath().ToStdString()));
+	}
+
 	// Track whether this mode uses OTB
 	last_load_has_otb = (asset_request.mode != ItemDefinitionMode::DatOnly);
 

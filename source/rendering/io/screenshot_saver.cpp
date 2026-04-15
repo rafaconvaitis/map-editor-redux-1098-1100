@@ -33,7 +33,14 @@ wxString ScreenshotSaver::SaveCapture(const wxFileName& suggestedInfo, const wxS
 	}
 
 	wxImage screenshot(width, height, buffer, true);
-	wxFileName path = suggestedInfo;
+	wxFileName path;
+	if (suggestedInfo.DirExists()) {
+		path.AssignDir(suggestedInfo.GetFullPath());
+	} else if (!suggestedInfo.GetPath().empty()) {
+		path.AssignDir(suggestedInfo.GetPath());
+	} else {
+		path.AssignDir(wxGetCwd());
+	}
 
 	int type = 0;
 	path.SetName(GenerateDateString());

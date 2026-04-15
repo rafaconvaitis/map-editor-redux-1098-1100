@@ -344,6 +344,7 @@ void Settings::IO(IOMode mode) {
 	Int(BORDERIZE_DRAG_THRESHOLD, 6000);
 	Int(BORDERIZE_PASTE_THRESHOLD, 10000);
 	Bool(ALWAYS_MAKE_BACKUP, false);
+	Int(BACKUP_RETENTION_LIMIT, 20);
 	Bool(USE_AUTOMAGIC, true);
 	Bool(HOUSE_BRUSH_REMOVE_ITEMS, false);
 	Bool(AUTO_ASSIGN_DOORID, true);
@@ -457,6 +458,7 @@ void Settings::IO(IOMode mode) {
 	String(HOTKEY_7, "");
 	String(HOTKEY_8, "");
 	String(HOTKEY_9, "");
+	String(RECENT_BRUSHES, "");
 
 	section("Toolbars");
 	Bool(SHOW_TOOLBAR_STANDARD, true);

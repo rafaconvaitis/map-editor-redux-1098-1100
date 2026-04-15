@@ -108,7 +108,7 @@ public:
 
 	Position GetCursorPosition() const;
 
-	void TakeScreenshot(wxFileName path, wxString format);
+	void TakeScreenshot(wxFileName path, wxString format, bool use_ingame_capture = true);
 
 	enum {
 		BLOCK_SIZE = 100
@@ -182,6 +182,8 @@ private:
 	MapWindow* GetMapWindow() const;
 	bool renderer_initialized = false;
 	long m_last_gc_time = 0;
+	wxLongLong m_last_hover_ui_update_time = 0;
+	wxLongLong m_last_render_ui_update_time = 0;
 };
 
 #endif
