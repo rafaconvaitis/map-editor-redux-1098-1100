@@ -4,7 +4,6 @@
 
 #include "util/image_manager.h"
 #include "util/file_system.h"
-#include <wx/stdpaths.h>
 #include <wx/filename.h>
 #include <wx/image.h>
 #include <wx/dcmemory.h>
@@ -16,6 +15,9 @@
 #include <string_view>
 #include <span>
 #include <ranges>
+#ifdef __WINDOWS__
+#include <windows.h>
+#endif
 
 ImageManager& ImageManager::GetInstance() {
 	static ImageManager instance;
@@ -38,8 +40,16 @@ void ImageManager::ClearCache() {
 
 std::string ImageManager::ResolvePath(std::string_view assetPath) {
 	// The path should be relative to the executable's "assets" directory
-	static wxString executablePath = wxStandardPaths::Get().GetExecutablePath();
-	static wxString assetsRoot = wxFileName(executablePath).GetPath() + wxFileName::GetPathSeparator() + "assets";
+	static wxString assetsRoot = []() {
+#ifdef __WINDOWS__
+		wchar_t modulePath[MAX_PATH] = { 0 };
+		const DWORD length = GetModuleFileNameW(nullptr, modulePath, MAX_PATH);
+		if (length > 0) {
+			return wxFileName(wxString(modulePath)).GetPath() + wxFileName::GetPathSeparator() + "assets";
+		}
+#endif
+		return wxGetCwd() + wxFileName::GetPathSeparator() + "assets";
+	}();
 
 	// Use full path joining to avoid stripping subdirectories
 	wxString fullPathLine = assetsRoot + wxFileName::GetPathSeparator() + wxString::FromUTF8(assetPath.data(), assetPath.size());

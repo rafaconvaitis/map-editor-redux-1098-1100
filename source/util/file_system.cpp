@@ -7,6 +7,36 @@
 // #include "utility/file_name.h"
 #include "app/settings.h"
 #include <wx/stdpaths.h>
+#include <wx/app.h>
+#ifdef __WINDOWS__
+#include <windows.h>
+#endif
+
+namespace {
+FileName getExecutablePathSafe() {
+#ifdef __WINDOWS__
+	// wxStandardPaths requires wxApp; during static startup, resolve path via WinAPI instead.
+	if (wxTheApp == nullptr) {
+		wchar_t modulePath[MAX_PATH] = { 0 };
+		const DWORD length = GetModuleFileNameW(nullptr, modulePath, MAX_PATH);
+		if (length > 0) {
+			return FileName(wxString(modulePath));
+		}
+	}
+#endif
+	return FileName(wxStandardPaths::Get().GetExecutablePath());
+}
+
+FileName getUserDataDirSafe() {
+	if (wxTheApp != nullptr) {
+		return FileName(wxStandardPaths::Get().GetUserDataDir());
+	}
+
+	FileName fallback = getExecutablePathSafe();
+	fallback.AppendDir("user");
+	return fallback;
+}
+}
 
 wxString FileSystem::m_dataDirectory;
 
@@ -23,12 +53,7 @@ wxString FileSystem::GetDataDirectory() {
 	}
 
 	// Silently reset directory
-	FileName exec_directory;
-	try {
-		exec_directory = dynamic_cast<wxStandardPaths&>(wxStandardPaths::Get()).GetExecutablePath();
-	} catch (const std::bad_cast) {
-		throw; // Crash application (this should never happend anyways...)
-	}
+	FileName exec_directory = getExecutablePathSafe();
 
 	exec_directory.AppendDir("data");
 	return exec_directory.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR);
@@ -36,12 +61,7 @@ wxString FileSystem::GetDataDirectory() {
 
 wxString FileSystem::GetExecDirectory() {
 	// Silently reset directory
-	FileName exec_directory;
-	try {
-		exec_directory = dynamic_cast<wxStandardPaths&>(wxStandardPaths::Get()).GetExecutablePath();
-	} catch (const std::bad_cast) {
-		wxLogError("Could not fetch executable directory.");
-	}
+	FileName exec_directory = getExecutablePathSafe();
 	return exec_directory.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR);
 }
 
@@ -53,7 +73,7 @@ wxString FileSystem::GetLocalDataDirectory() {
 		dir.Mkdir(0755, wxPATH_MKDIR_FULL);
 		return dir.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR);
 	} else {
-		FileName dir = dynamic_cast<wxStandardPaths&>(wxStandardPaths::Get()).GetUserDataDir();
+		FileName dir = getUserDataDirSafe();
 #ifdef __WINDOWS__
 		dir.AppendDir("Remere's Map Editor");
 #else
@@ -72,7 +92,7 @@ wxString FileSystem::GetLocalDirectory() {
 		dir.Mkdir(0755, wxPATH_MKDIR_FULL);
 		return dir.GetPath(wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR);
 	} else {
-		FileName dir = dynamic_cast<wxStandardPaths&>(wxStandardPaths::Get()).GetUserDataDir();
+		FileName dir = getUserDataDirSafe();
 #ifdef __WINDOWS__
 		dir.AppendDir("Remere's Map Editor");
 #else

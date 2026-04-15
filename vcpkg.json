@@ -1,7 +1,13 @@
 {
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
   "dependencies": [
-    "wxwidgets",
+    {
+      "name": "wxwidgets",
+      "default-features": false,
+      "features": [
+        "sound"
+      ]
+    },
     "glad",
     "glm",
     "asio",
@@ -20,6 +26,12 @@
     "lua",
     "sol2",
     "cpr"
+  ],
+  "overrides": [
+    {
+      "name": "wxwidgets",
+      "version": "3.2.8.1"
+    }
   ],
   "builtin-baseline": "1940ee77e81573713c0d364c42f5990172198be1"
 }
